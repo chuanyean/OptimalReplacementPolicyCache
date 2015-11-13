@@ -168,22 +168,35 @@ options.use_map = True
 Ruby.create_system(options, system)
 assert(options.num_cpus == len(system.ruby._cpu_ruby_ports))
 
-for i in xrange(np):
-    ruby_port = system.ruby._cpu_ruby_ports[i]
 
-    # Create the interrupt controller and connect its ports to Ruby
-    system.cpu[i].createInterruptController()
-    # Connect the cpu's cache ports to Ruby
-    system.cpu[i].icache_port = ruby_port.slave
-    system.cpu[i].dcache_port = ruby_port.slave
-    if buildEnv['TARGET_ISA'] == 'x86':
-        system.cpu[i].interrupts.pio = ruby_port.master
-        system.cpu[i].interrupts.int_master = ruby_port.slave
-        system.cpu[i].interrupts.int_slave = ruby_port.master
+if options.ruby:
+    for i in xrange(np):
+        ruby_port = system.ruby._cpu_ruby_ports[i]
 
-        system.cpu[i].itb.walker.port = ruby_port.slave
-        system.cpu[i].dtb.walker.port = ruby_port.slave
+        # Create the interrupt controller and connect its ports to Ruby
+        system.cpu[i].createInterruptController()
+        # Connect the cpu's cache ports to Ruby
+        system.cpu[i].icache_port = ruby_port.slave
+        system.cpu[i].dcache_port = ruby_port.slave
+        if buildEnv['TARGET_ISA'] == 'x86':
+            system.cpu[i].interrupts.pio = ruby_port.master
+            system.cpu[i].interrupts.int_master = ruby_port.slave
+            system.cpu[i].interrupts.int_slave = ruby_port.master
 
+            system.cpu[i].itb.walker.port = ruby_port.slave
+            system.cpu[i].dtb.walker.port = ruby_port.slave
 
+        # link bypassing command-line and branch predictor accuracy 
+        # option to CPU's params
+        system.cpu[i].forwardingEnable = options.forwarding
+        
+        assert (options.bpredictor >= 0 and options.bpredictor <= 100)
+        system.cpu[i].globalPredictorDegrade = options.bpredictor
+    
+else:
+    #system.system_port = system.membus.slave
+    system.physmem.port = system.membus.master
+    CacheConfig.config_cache(options, system)
+    
 root = Root(full_system = False, system = system)
 Simulation.run(options, root, system, FutureClass)
