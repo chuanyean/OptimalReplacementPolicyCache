@@ -296,9 +296,10 @@ Cache<TagStore>::access(PacketPtr pkt, BlkType *&blk,
     int id = pkt->req->hasContextId() ? pkt->req->contextId() : -1;
     blk = tags->accessBlock(pkt->getAddr(), lat, id);
 
-    DPRINTF(Cache, "%s%s %x %s\n", pkt->cmdString(),
+    DPRINTF(Cache, "%s%s %x %s (set:%d ,tag:%x)\n", pkt->cmdString(),
             pkt->req->isInstFetch() ? " (ifetch)" : "",
-            pkt->getAddr(), (blk) ? "hit" : "miss");
+            pkt->getAddr(), (blk) ? "hit" : "miss",
+            tags->extractSet(pkt->getAddr()), tags->extractTag(pkt->getAddr()));
 
     if (blk != NULL) {
 
@@ -864,8 +865,9 @@ Cache<TagStore>::handleResponse(PacketPtr pkt)
         (pkt->isRead() || pkt->cmd == MemCmd::UpgradeResp);
 
     if (is_fill && !is_error) {
-        DPRINTF(Cache, "Block for addr %x being updated in Cache\n",
-                pkt->getAddr());
+        DPRINTF(Cache, "Block for addr %x (set:%d, tag:%x) being updated in Cache\n",
+                pkt->getAddr(), tags->extractSet(pkt->getAddr()),
+                tags->extractTag(pkt->getAddr()));
 
         // give mshr a chance to do some dirty work
         mshr->handleFill(pkt, blk);

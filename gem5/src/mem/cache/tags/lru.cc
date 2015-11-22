@@ -144,6 +144,12 @@ LRU::findBlock(Addr addr) const
     Addr tag = extractTag(addr);
     unsigned set = extractSet(addr);
     BlkType *blk = sets[set].findBlk(tag);
+    DPRINTF (Cache, "MZ: In findBlock. Searching for addr %x in cache.\n", addr);
+    for (int i=0; i<numSets; i++){
+    	for (int j=0; j<assoc; j++)
+    	DPRINTF (Cache, "MZ: sets[%d] blks[%d] (V:%d | T:%5x | D:%x)\n", i, j, sets[i].blks[j]->isValid(),
+    			sets[i].blks[j]->tag, unsigned(*(sets[i].blks[j]->data)));
+    }
     return blk;
 }
 
