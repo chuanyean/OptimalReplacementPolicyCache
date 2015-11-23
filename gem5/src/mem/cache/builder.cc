@@ -55,6 +55,9 @@
 #include "mem/cache/tags/iic.hh"
 #endif
 
+#if defined(USE_CACHE_OPT) 
+#include "mem/cache/tags/lru.hh" 
+#endif 
 
 using namespace std;
 
@@ -87,6 +90,15 @@ using namespace std;
 #define BUILD_LRU_CACHE BUILD_CACHE_PANIC("lru cache")
 #endif
 
+#if defined(USE_CACHE_OPT)
+#define BUILD_OPT_CACHE do {                                            \
+        LRU *tags = new LRU(numSets, block_size, assoc, hit_latency);       \
+        BUILD_CACHE(LRU, tags);                                         \
+    } while (0)
+#else
+#define BUILD_OPT_CACHE BUILD_CACHE_PANIC("opt cache")
+#endif
+
 #if defined(USE_CACHE_IIC)
 #define BUILD_IIC_CACHE do {                            \
         IIC *tags = new IIC(iic_params);                \
@@ -96,17 +108,26 @@ using namespace std;
 #define BUILD_IIC_CACHE BUILD_CACHE_PANIC("iic")
 #endif
 
-#define BUILD_CACHES do {                               \
-        if (repl == NULL) {                             \
-            if (numSets == 1) {                         \
-                BUILD_FALRU_CACHE;                      \
-            } else {                                    \
-               BUILD_LRU_CACHE;                    \
-            }                                           \
-        } else {                                        \
-            BUILD_IIC_CACHE;                            \
-        }                                               \
-    } while (0)
+/**
+	CY - 	If OPT L2 is assert -> build OPT Cache 
+		Else -> Continue with LRU 
+**/
+
+#define BUILD_CACHES do {                               	\
+	if (opt_l2 != 0) {					\
+		BUILD_OPT_CACHE;				\
+	} else {						\
+        	if (repl == NULL) {                     	\
+         	   	if (numSets == 1) {             	\
+                		BUILD_FALRU_CACHE;      	\
+            		} else {                        	\
+               			BUILD_LRU_CACHE;        	\
+            		}                               	\
+        	} else {                                	\
+            		BUILD_IIC_CACHE;                	\
+        	}						\
+	}							\
+    } while (0)							\
 
 BaseCache *
 BaseCacheParams::create()

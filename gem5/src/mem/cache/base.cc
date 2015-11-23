@@ -69,6 +69,8 @@ BaseCache::BaseCache(const Params *p)
       writeBuffer("write buffer", p->write_buffers, p->mshrs+1000,
                   MSHRQueue_WriteBuffer),
       blkSize(p->block_size),
+      L2_OPT(p->opt_l2),
+      scAssoc(p->sc_assoc), 
       hitLatency(p->hit_latency),
       responseLatency(p->response_latency),
       numTarget(p->tgts_per_mshr),

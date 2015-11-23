@@ -46,6 +46,10 @@ class BaseCache(MemObject):
     prioritizeRequests = Param.Bool(False,
         "always service demand misses first")
     repl = Param.Repl(NULL, "replacement policy")
+    # CY - Adding OPT Cache param 
+    opt_l2 = Param.Bool(False, "L2 Optimal Replacement Policy")
+    # CY - Specify SC Assoc.
+    sc_assoc = Param.Int(-1,"Shepherd's Cache Associativity") 
     size = Param.MemorySize("capacity in bytes")
     forward_snoops = Param.Bool(True,
         "forward snoops from mem side to cpu side")

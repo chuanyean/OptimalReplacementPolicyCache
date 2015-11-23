@@ -40,8 +40,10 @@ def config_cache(options, system):
             system.l2 = O3_ARM_v7aL2(size = options.l2_size, assoc = options.l2_assoc,
                                 block_size=options.cacheline_size)
         else:
+	    # [CY - Passing opt, sc & mc associativity vars into Cache] 
             system.l2 = L2Cache(size = options.l2_size, assoc = options.l2_assoc,
-                                block_size=options.cacheline_size)
+                                block_size=options.cacheline_size, 
+				opt_l2 = options.opt_l2, sc_assoc = options.l2_sc_assoc)
 
         system.tol2bus = CoherentBus()
         system.l2.cpu_side = system.tol2bus.master

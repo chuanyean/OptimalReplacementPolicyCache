@@ -61,6 +61,12 @@ def addCommonOptions(parser):
                       Only used if multiple programs are specified. If true,
                       then the number of threads per cpu is same as the
                       number of programs.""")
+    
+    # CY - OPT replacement policy option 
+    parser.add_option("--opt_l2", action="store_true", default=False); 
+    # CY - Specify Number of SC Associativity
+    # CY - MC = Total Assoc. - SC Assoc. 
+    parser.add_option("--l2_sc_assoc", type="int", default=2)
 
     # Run duration options
     parser.add_option("-m", "--maxtick", type="int", default=m5.MaxTick,

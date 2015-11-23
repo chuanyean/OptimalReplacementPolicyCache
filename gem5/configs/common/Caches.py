@@ -37,8 +37,10 @@ class L1Cache(BaseCache):
     tgts_per_mshr = 20
     is_top_level = True
 
+# CY - Added default SC value 
 class L2Cache(BaseCache):
     assoc = 8
+    sc_assoc = 2  
     block_size = 64
     hit_latency = '10ns'
     response_latency = '10ns'

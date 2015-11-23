@@ -42,6 +42,11 @@
 #include "mem/cache/tags/lru.hh"
 #endif
 
+//-- [CY Comment first as LRU has already been defined --// 
+//#if defined(USE_CACHE_OPT)
+//#include "mem/cache/tags/lru.hh"
+//#endif 
+
 #if defined(USE_CACHE_FALRU)
 #include "mem/cache/tags/fa_lru.hh"
 #endif
@@ -67,5 +72,10 @@ template class Cache<IIC>;
 #if defined(USE_CACHE_LRU)
 template class Cache<LRU>;
 #endif
+
+//-- [CY Comment first as LRU has already been defined --// 
+//#if defined(USE_CACHE_OPT)
+//template class Cache<LRU>; 
+//#endif 
 
 #endif //DOXYGEN_SHOULD_SKIP_THIS

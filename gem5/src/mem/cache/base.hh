@@ -223,8 +223,15 @@ class BaseCache : public MemObject
         }
     }
 
+
     /** Block size of this cache */
     const unsigned blkSize;
+
+    /** CY - Enabling L2 OPT Replacement Policy **/ 
+    bool L2_OPT; 
+
+    /** CY - Number of Shepherd's Cache in Associativity **/ 
+    const unsigned scAssoc; 
 
     /**
      * The latency of a hit in this device.
