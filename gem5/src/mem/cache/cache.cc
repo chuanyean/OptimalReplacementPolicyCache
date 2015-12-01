@@ -43,9 +43,9 @@
 #endif
 
 //-- [CY Comment first as LRU has already been defined --// 
-//#if defined(USE_CACHE_OPT)
-//#include "mem/cache/tags/lru.hh"
-//#endif 
+#if defined(USE_CACHE_OPT)
+#include "mem/cache/tags/opt.hh"
+#endif 
 
 #if defined(USE_CACHE_FALRU)
 #include "mem/cache/tags/fa_lru.hh"
@@ -74,8 +74,8 @@ template class Cache<LRU>;
 #endif
 
 //-- [CY Comment first as LRU has already been defined --// 
-//#if defined(USE_CACHE_OPT)
-//template class Cache<LRU>; 
-//#endif 
+#if defined(USE_CACHE_OPT)
+template class Cache<OPT>;
+#endif
 
 #endif //DOXYGEN_SHOULD_SKIP_THIS

@@ -31,6 +31,7 @@
 
 #include "mem/cache/tags/cacheset.hh"
 
+
 CacheBlk*
 CacheSet::findBlk(Addr tag) const
 {
@@ -88,5 +89,65 @@ CacheSet::moveToTail(CacheBlk *blk)
         next = tmp;
         --i;
     } while (next != blk);
+}
+
+int
+CacheSet::findLeastImminentBlock (Addr addr, int SCBlkIndex)
+{
+	int i=0;
+	int maxPos = 0;
+	int scptr = SC_ptr[SCBlkIndex];
+	int maxCount = count_mat[0][scptr];
+
+	// Search in CM to get the highest count value
+	// That will be the least imminent block
+	//DPRINTF (CacheRepl, "MZ - Searching for least imm blk, addr: %x, SCPtr(CM col): %d\n", addr, scptr);
+	for (i =0; i<assoc; i++){
+		//DPRINTF (CacheRepl, "MZ - countMat[%d][%d] = %d\n", i, scptr);
+		if (maxCount < count_mat[i][scptr]){
+			maxCount = count_mat[i][scptr];
+			maxPos = i;
+		}
+	}
+
+	//DPRINTF (CacheRepl, "MZ - Found least imm blk at pos %d, with count val %d\n", maxPos, maxCount);
+	return maxPos;
+}
+
+int
+CacheSet::getBlockIndex (CacheBlk *blk)
+{
+	for (unsigned i=0; i<assoc; i++){
+		if (blks[i] == blk){
+			return i;
+		}
+	}
+	// SHould never reach here
+	fatal ("Error finding block in cache.");
+}
+
+void
+CacheSet::moveSCToTail(int blkSCPtr)
+{
+    // nothing to do if blk is already tail
+    if (SC_queue[sc_assoc-1] == blkSCPtr)
+        return;
+
+    // write 'next' block into SC_queue[i], move everything to right
+    // (right= tail, left = head)
+    // until we overwrite the block we moved to tail.
+
+    // start by setting up to write 'blk' into tail
+    int i = sc_assoc - 1;
+    int next = SC_queue[0];
+
+    do {
+        assert(i >= 0);
+        // swap SC_queue[i] and next
+        int tmp = SC_queue[i];
+        SC_queue[i] = next;
+        next = tmp;
+        --i;
+    } while (i>=0);
 }
 

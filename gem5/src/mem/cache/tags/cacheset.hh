@@ -46,11 +46,34 @@
 class CacheSet
 {
   public:
-    /** The associativity of this set. */
+    /** The total associativity of this set. */
     int assoc;
+    /** The SC associativity of this set */
+    int sc_assoc;
+    /** The MC associativity of this set */
+    int mc_assoc;
 
     /** Cache blocks in this set, maintained in LRU order 0 = MRU. */
     CacheBlk **blks;
+
+    /** Array of SC_flag for each block in a set */
+    int *SC_flag;
+
+    /** Array of SC_ptr for each block in a set */
+    int *SC_ptr;
+
+    /** NVC -> Next Value Counter */
+    int *nvc;
+
+    /** Count Matrix (CM) */
+    int **count_mat;
+
+    /** SC queue to track SC blocks in FIFO order.
+     * Head = oldest block, i.e. newer blocks always
+     * added to tail.
+     * Contains integer SC_ptr vals
+     */
+    int *SC_queue;
 
     /**
      * Find a block matching the tag in this set.
@@ -63,14 +86,37 @@ class CacheSet
     /**
      * Move the given block to the head of the list.
      * @param blk The block to move.
+     * Only used in LRU, not in OPT
      */
     void moveToHead(CacheBlk *blk);
 
     /**
      * Move the given block to the tail of the list.
      * @param blk The block to move
+     * Only used in LRU, not in OPT
      */
     void moveToTail(CacheBlk *blk);
+
+
+	/**
+	 * Move the given SC block to the tail of the list.
+	 * @param blk The block to move
+	 */
+	void moveSCToTail(int blkSCPtr);
+
+    /**
+     * Uses the Count Matrix to find the least imminent block
+     * which is the largest count value for a particular
+     * SC block.
+     * Returns index to the least imminent block.
+     */
+    int findLeastImminentBlock (Addr addr, int SCBlkIndex);
+
+    /**
+     * Iterate through all the blocks in the set to find
+     * the index of the input argument (block)
+     */
+    int getBlockIndex (CacheBlk *blk);
 
 };
 

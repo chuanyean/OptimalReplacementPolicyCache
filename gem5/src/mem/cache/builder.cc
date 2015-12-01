@@ -45,6 +45,7 @@
 // Tag Templates
 #if defined(USE_CACHE_LRU)
 #include "mem/cache/tags/lru.hh"
+#include "mem/cache/tags/opt.hh"
 #endif
 
 #if defined(USE_CACHE_FALRU)
@@ -55,9 +56,9 @@
 #include "mem/cache/tags/iic.hh"
 #endif
 
-#if defined(USE_CACHE_OPT) 
-#include "mem/cache/tags/lru.hh" 
-#endif 
+#if defined(USE_CACHE_OPT)
+#include "mem/cache/tags/opt.hh"
+#endif
 
 using namespace std;
 
@@ -92,8 +93,8 @@ using namespace std;
 
 #if defined(USE_CACHE_OPT)
 #define BUILD_OPT_CACHE do {                                            \
-        LRU *tags = new LRU(numSets, block_size, assoc, hit_latency);       \
-        BUILD_CACHE(LRU, tags);                                         \
+    OPT *tags = new OPT(numSets, block_size, assoc, hit_latency, sc_assoc);	\
+        BUILD_CACHE(OPT, tags);                                         \
     } while (0)
 #else
 #define BUILD_OPT_CACHE BUILD_CACHE_PANIC("opt cache")
