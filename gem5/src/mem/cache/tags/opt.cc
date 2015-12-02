@@ -40,7 +40,7 @@ OPT::OPT(unsigned _numSetsTotal, unsigned _blkSize,
         fatal("access latency must be greater than zero");
     }
 
-    numSetsMC = numSetsTotal - numSetsSC;
+    numSetsMC = assoc - numSetsSC;
     blkMask = blkSize - 1;
     setShift = floorLog2(blkSize);
     setMask = numSetsTotal - 1;
@@ -52,7 +52,7 @@ OPT::OPT(unsigned _numSetsTotal, unsigned _blkSize,
     sets = new CacheSet[numSetsTotal];
     blks = new BlkType[numSetsTotal * assoc];
 
-    int **temp = NULL;
+    //int *temp = NULL;
 
     //-- Defining array members for sets(cachesets)
     unsigned ii,jj = 0;
@@ -60,14 +60,18 @@ OPT::OPT(unsigned _numSetsTotal, unsigned _blkSize,
         sets[ii].SC_flag = new int[assoc];
         sets[ii].SC_ptr = new int[assoc];
         sets[ii].nvc = new int[numSetsSC];
-        *temp = new int[assoc];
-        for (jj=0; jj<assoc; jj++){
-        	temp[jj] = new int[numSetsSC];
-        }
-        sets[ii].count_mat = temp;
+
+        //temp = new int[assoc];
+        //allocate Count matrix in one big chunk
+        sets[ii].count_mat = new int [assoc * numSetsSC];
+
+        //for (jj=0; jj<assoc; jj++){
+        	//temp[jj] = new int[numSetsSC];
+        //}
+
+        //sets[ii].count_mat = temp;
         sets[ii].SC_queue = new int[numSetsSC];
     }
-
 
     // allocate data storage in one big chunk
     numBlocks = numSetsTotal * assoc;
@@ -102,7 +106,7 @@ OPT::OPT(unsigned _numSetsTotal, unsigned _blkSize,
 
             //-- Initializing Count Matrix --//
         	for (jj=0; jj<numSetsSC; jj++){
-        		sets[i].count_mat[ii][jj] = -1;
+        		sets[i].count_mat[ii + jj*assoc]/*[ii][jj]*/ = -1;
         	}
         }
 
@@ -143,6 +147,13 @@ OPT::~OPT()
 {
     delete [] dataBlks;
     delete [] blks;
+    for (int i=0; i<numSetsTotal; i++){
+    	delete [] sets[i].SC_flag;
+    	delete [] sets[i].SC_ptr;
+    	delete [] sets[i].nvc;
+    	delete [] sets[i].count_mat;
+    	delete [] sets[i].SC_queue;
+    }
     delete [] sets;
 }
 
@@ -162,9 +173,9 @@ OPT::accessBlock(Addr addr, int &lat, int master_id)
 	//-- Else -> Don't Touch
     unsigned ii = 0;
     for(ii=0; ii<numSetsSC; ii++){
-		if (sets[set].count_mat[hitBlockIndex][ii] == -1){
+		if (sets[set].count_mat[hitBlockIndex + ii*assoc]/*[hitBlockIndex][ii]*/ == -1){
 			DPRINTF(CacheRepl, "-MZ- updating count_matx[%d][%d] to %d for hits", hitBlockIndex, ii, sets[set].nvc[ii]);
-			sets[set].count_mat[hitBlockIndex][ii] = sets[set].nvc[ii];
+			sets[set].count_mat[hitBlockIndex + ii*assoc]/*[hitBlockIndex][ii]*/ = sets[set].nvc[ii];
 			sets[set].nvc[ii]++;
 		}
     }
@@ -338,12 +349,12 @@ OPT::insertBlock(Addr addr, BlkType *blk, int master_id)
     // Update CM matrix for all SC blocks in current set
     // Initialize all rows for this SC's col to -1
     for (m=0; m<numSetsTotal; m++){
-        sets[set].count_mat[m][prevSC_ptr] = -1;
+        sets[set].count_mat[m + prevSC_ptr*assoc]/*[m][prevSC_ptr]*/ = -1;
     }
     // Place a 0 for this SC in all cols
     for (m=0; m<numSetsSC; m++) {
     	if (m != prevSC_ptr) { //don't assign for self
-    		sets[set].count_mat[prevSC_ptr][m] = 0;
+    		sets[set].count_mat[prevSC_ptr + m*assoc]/*[prevSC_ptr][m]*/ = 0;
     	}
     }
     // no need to change SC_ptr ?

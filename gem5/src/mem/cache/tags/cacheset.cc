@@ -97,15 +97,15 @@ CacheSet::findLeastImminentBlock (Addr addr, int SCBlkIndex)
 	int i=0;
 	int maxPos = 0;
 	int scptr = SC_ptr[SCBlkIndex];
-	int maxCount = count_mat[0][scptr];
+	int maxCount = count_mat[0 + scptr*assoc]; //count_mat[0][scptr];
 
 	// Search in CM to get the highest count value
 	// That will be the least imminent block
 	//DPRINTF (CacheRepl, "MZ - Searching for least imm blk, addr: %x, SCPtr(CM col): %d\n", addr, scptr);
 	for (i =0; i<assoc; i++){
 		//DPRINTF (CacheRepl, "MZ - countMat[%d][%d] = %d\n", i, scptr);
-		if (maxCount < count_mat[i][scptr]){
-			maxCount = count_mat[i][scptr];
+		if (maxCount < count_mat[i + scptr*assoc]/*[i][scptr]*/){
+			maxCount = count_mat[i + scptr*assoc]/*[i][scptr]*/;
 			maxPos = i;
 		}
 	}

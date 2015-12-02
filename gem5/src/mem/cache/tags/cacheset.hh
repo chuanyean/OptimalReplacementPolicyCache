@@ -66,7 +66,8 @@ class CacheSet
     int *nvc;
 
     /** Count Matrix (CM) */
-    int **count_mat;
+    //int **count_mat;
+    int *count_mat;
 
     /** SC queue to track SC blocks in FIFO order.
      * Head = oldest block, i.e. newer blocks always
