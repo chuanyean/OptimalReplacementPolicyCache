@@ -52,37 +52,31 @@ OPT::OPT(unsigned _numSetsTotal, unsigned _blkSize,
     sets = new CacheSet[numSetsTotal];
     blks = new BlkType[numSetsTotal * assoc];
 
-    //int *temp = NULL;
-
     //-- Defining array members for sets(cachesets)
     unsigned ii,jj = 0;
-    for(ii=0; ii<numSetsTotal; ++ii){
-        sets[ii].SC_flag = new int[assoc];
-        sets[ii].SC_ptr = new int[assoc];
-        sets[ii].nvc = new int[numSetsSC];
-
-        //temp = new int[assoc];
-        //allocate Count matrix in one big chunk
-        sets[ii].count_mat = new int [assoc * numSetsSC];
-
-        //for (jj=0; jj<assoc; jj++){
-        	//temp[jj] = new int[numSetsSC];
-        //}
-
-        //sets[ii].count_mat = temp;
-        sets[ii].SC_queue = new int[numSetsSC];
-    }
 
     // allocate data storage in one big chunk
     numBlocks = numSetsTotal * assoc;
     dataBlks = new uint8_t[numBlocks * blkSize];
 
 
-    int sc_assoc_temp = 0;
-    int sc_assoc_seq = 0;
-
     unsigned blkIndex = 0;       // index into blks array
     for (unsigned i = 0; i < numSetsTotal; ++i) {
+
+    	sets[i].SC_flag = new int[assoc];
+		sets[i].SC_ptr = new int[assoc];
+		sets[i].nvc = new int[numSetsSC];
+		sets[i].leastImmBlk_SCptr = 0;
+
+		//allocate Count matrix in one big chunk
+		sets[i].count_mat = new int [assoc * numSetsSC];
+
+		//initialize SC queue to 0,1,2,3....
+		sets[i].SC_queue = new int[numSetsSC];
+    	for (jj=0; jj<numSetsSC; jj++){
+    		sets[i].SC_queue[jj] = jj;
+    	}
+
         sets[i].assoc = assoc;
 
         //-- Setup of SC params --//
@@ -90,14 +84,14 @@ OPT::OPT(unsigned _numSetsTotal, unsigned _blkSize,
         sets[i].mc_assoc = assoc - numSetsSC;
 
         //-- Initializing the SC and MC blocks
+        int sc_assoc_seq = 0;
         for (ii = 0 ; ii<assoc ; ii++){
         	//-- Setting the first number of blocks to SC --//
-        	if (sc_assoc_temp < numSetsSC) {
+        	if (ii < numSetsSC) {
         			sets[i].SC_flag[ii] = 1;
-        			sets[i].SC_ptr[ii] = sc_assoc_seq;
+        			sets[i].SC_ptr[ii] = sc_assoc_seq++;
         			sets[i].nvc[ii] = 0;
-        			sc_assoc_temp++;
-        			sc_assoc_seq++;
+
         	//-- Setting the remainder to MC --//
         	} else {
         			sets[i].SC_flag[ii] = 0;
@@ -106,7 +100,7 @@ OPT::OPT(unsigned _numSetsTotal, unsigned _blkSize,
 
             //-- Initializing Count Matrix --//
         	for (jj=0; jj<numSetsSC; jj++){
-        		sets[i].count_mat[ii + jj*assoc]/*[ii][jj]*/ = -1;
+        		sets[i].count_mat[ii + jj*assoc] = -2;
         	}
         }
 
@@ -126,8 +120,6 @@ OPT::OPT(unsigned _numSetsTotal, unsigned _blkSize,
             // invalidate new cache block
             blk->invalidate();
 
-
-
             //EGH Fix Me : do we need to initialize blk?
 
             // Setting the tag to j is just to prevent long chains in the hash
@@ -140,6 +132,7 @@ OPT::OPT(unsigned _numSetsTotal, unsigned _blkSize,
             blk->set = i;
         }
     }
+
 }
 
 // Destructor
@@ -165,17 +158,20 @@ OPT::accessBlock(Addr addr, int &lat, int master_id)
     BlkType *blk = sets[set].findBlk(tag);
     lat = hitLatency;
 
+    // if it's a miss, exit
+    if (blk == NULL) { return blk; }
+
     //-- Get the Hit Block Index --//
-    int hitBlockIndex = sets[set].getBlockIndex(blk);
+    int hitBlockIndex = sets[set].getSCFIFOHead();
 
 	//-- Determine if count matrix is defined --//
 	//-- If undefined -> Assign CM to NVC, Update NVC
 	//-- Else -> Don't Touch
     unsigned ii = 0;
     for(ii=0; ii<numSetsSC; ii++){
-		if (sets[set].count_mat[hitBlockIndex + ii*assoc]/*[hitBlockIndex][ii]*/ == -1){
-			DPRINTF(CacheRepl, "-MZ- updating count_matx[%d][%d] to %d for hits", hitBlockIndex, ii, sets[set].nvc[ii]);
-			sets[set].count_mat[hitBlockIndex + ii*assoc]/*[hitBlockIndex][ii]*/ = sets[set].nvc[ii];
+		if (sets[set].count_mat[hitBlockIndex + ii*assoc] == -1){
+			DPRINTF(Cache, "-MZ- updating count_matx[%d][%d] to %d for hits", hitBlockIndex, ii, sets[set].nvc[ii]);
+			sets[set].count_mat[hitBlockIndex + ii*assoc] = sets[set].nvc[ii];
 			sets[set].nvc[ii]++;
 		}
     }
@@ -202,14 +198,20 @@ OPT::findBlock(Addr addr) const
     BlkType *blk = sets[set].findBlk(tag);   // blk == 0 if no matching block found
 
     // Print contents of cache for debugging help
-    DPRINTF (Cache, "MZ: In findBlock. Searching for addr %x in cache.\n");
+    DPRINTF (Cache, "MZ: In findBlock. Searching for addr %x in cache.\n", addr);
     for (int i=0; i<numSetsTotal; i++){
-    	for (int j=0; j<assoc; j++)
-    	DPRINTF (Cache, "MZ: sets[%d] blks[%d] (SCF:%d | SCPtr:%d | V:%d | T:%5x | D:%x)\n",
-    			sets[i].SC_flag[j], sets[i].SC_ptr[j], i, j, sets[i].blks[j]->isValid(),
-    			sets[i].blks[j]->tag, unsigned(*(sets[i].blks[j]->data)));
+    	for (int j=0; j<assoc; j++) {
+    		DPRINTF (Cache, "MZ: sets[%d] blks[%d] (SCF:%d | SCPtr:%2d | V:%d | T:%5x | D:%x) - CM(\n",
+    					i, j, sets[i].SC_flag[j], sets[i].SC_ptr[j], sets[i].blks[j]->isValid(),
+    					sets[i].blks[j]->tag, unsigned(*(sets[i].blks[j]->data)));
 
-    }
+    		//Print CM
+    		/* remove \n from above when uncommenting this..
+    		for (int k=0; k<numSetsSC; k++){
+    			cout << "blk[" << k << "]:" << sets[i].count_mat[j + k*assoc] << ",";
+    		}cout << ")\n";*/
+    	}
+   }
     return blk;
 }
 
@@ -269,34 +271,58 @@ OPT::findVictimInMC(BlkType *SCblk, int SCblkIndex, Addr addr, PacketList &write
 	for (i = 0; i < assoc; i++){
 		BlkType *MCblk = sets[set].blks[i];
 		if ( sets[set].SC_flag[i] == 0 && MCblk->isValid() == 0 ) {
-			// Move block from SC to MC, i.e. change flag & reset ptr
-			sets[set].SC_flag[i] = 0;
-			sets[set].SC_ptr[i] = -1;
+			//Put the empty MC block in SC (to maintain total block counts for SC & MC)
+			sets[set].SC_flag[i] = 1;
+			sets[set].SC_ptr[i] = sets[set].SC_ptr[SCblkIndex];
 
-			return SCblk; //return original SC block
+			// And Move block from SC to MC, i.e. change flag & reset ptr
+			sets[set].SC_flag[SCblkIndex] = 0;
+			sets[set].SC_ptr[SCblkIndex] = -1;
+
+			DPRINTF (Cache, "MZ - Found victim in empty MC block  (set[%d], blk[%d]) to be replaced.\n"
+					"After move, blk[%d] = SCF:%d | SCptr:%d | T:%d | D:%x\n"
+					"            blk[%d] = SCF:%d | SCptr:%d | T:%d | D:%x\n", set, i, i, sets[set].SC_flag[i],
+					sets[set].SC_ptr[i], MCblk->tag, unsigned(*(MCblk->data)), SCblkIndex, sets[set].SC_flag[SCblkIndex],
+					sets[set].SC_ptr[SCblkIndex], SCblk->tag, unsigned(*(SCblk->data)));
+
+			return MCblk; //return original MC block (now an SC block)
 		}
 	}
 
-	// If no empty block found in MC, need to evict a block from MC.
-	// Use imminence information gathered by CounterMatrix to decide
-	// which block to evict from MC.
-	int MCBlkIndex = sets[set].findLeastImminentBlock (addr, SCblkIndex);
+	/*
+	 * If no empty block found in MC, need to evict a block from the cache.
+	 * Use imminence information gathered by CounterMatrix to decide
+	 * which block to evict. It could be either a block from SC, or from MC.
+	 */
+	int blkToEvict_Index = sets[set].findLeastImminentBlock ();
 
-	// Now, perform the evictions. Do this by swapping MC and SC
-	// blocks, so that:
-	// Block to move to MC --> will be moved from SC to MC
-	// Block to evict from MC --> will be in SC, from where it will
-	// be replaced by incoming cache miss and written back to
-	// lower-level mem (replacement & WB handled in cache_impl.hh)
+	/* Now, perform the evictions.
+	 * If the block to evict is an SC block, simply return it.
+	 * Caller is responsible for invalidating it.
+	 */
+	if (sets[set].SC_flag[blkToEvict_Index] == 1){
+		return sets[set].blks[blkToEvict_Index];
+	}
+
+	/* Else, if the block to evict is one from MC, perform the eviction
+	 * by swapping MC and SC blocks, so that:
+	 *
+	 * Block to move to MC --> will be moved from SC to MC
+	 *
+	 * Block to evict from MC --> will be in SC, from where it will
+	 * be replaced by incoming cache miss and written back to
+	 * lower-level mem (replacement & WB handled in cache_impl.hh)
+	 */
+
+	//Move MC block to SC
+	sets[set].SC_flag[blkToEvict_Index] = 1;
+	sets[set].SC_ptr[blkToEvict_Index] = sets[set].SC_ptr[SCblkIndex];
 
 	// Move SC block to MC
 	sets[set].SC_flag[SCblkIndex] = 0;
 	sets[set].SC_ptr[SCblkIndex] = -1;
 
-	//Move MC block to SC
-	sets[set].SC_flag[MCBlkIndex] = 1;
-	//don't care about SCptr for MC block. will be replaced with new block anyway.
-	return sets[set].blks[MCBlkIndex]; //return MC Block
+	return sets[set].blks[blkToEvict_Index]; //return MC Block
 }
 
 
@@ -304,7 +330,7 @@ void
 OPT::insertBlock(Addr addr, BlkType *blk, int master_id)
 {
 	unsigned set = extractSet(addr);
-	int blkIndex = sets[set].getBlockIndex (blk);
+	int blkIndex = sets[set].getSCFIFOHead ();
 
 	//New blocks should always be inserted in SC, and not MC.
 	assert (sets[set].SC_flag[blkIndex]);
@@ -344,19 +370,33 @@ OPT::insertBlock(Addr addr, BlkType *blk, int master_id)
     int prevSC_ptr = sets[set].SC_ptr[blkIndex];
     sets[set].nvc[prevSC_ptr] = 0;
 
-    unsigned m = 0;
+    int m = 0;
 
     // Update CM matrix for all SC blocks in current set
-    // Initialize all rows for this SC's col to -1
-    for (m=0; m<numSetsTotal; m++){
-        sets[set].count_mat[m + prevSC_ptr*assoc]/*[m][prevSC_ptr]*/ = -1;
+    // Initialize this SC's column to -1 (empty)
+    for (m=0; m<assoc; m++){
+        sets[set].count_mat[m + prevSC_ptr*assoc] = -1;
     }
-    // Place a 0 for this SC in all cols
-    for (m=0; m<numSetsSC; m++) {
-    	if (m != prevSC_ptr) { //don't assign for self
-    		sets[set].count_mat[prevSC_ptr + m*assoc]/*[prevSC_ptr][m]*/ = 0;
+
+    // Update CM matrix for current newly inserted block
+    // Initialize the row of this block to dummy value 0 for all valid SC blocks.
+    for (m=0; m<numSetsSC; m++){
+    	if (m != prevSC_ptr && sets[set].count_mat[prevSC_ptr + m*assoc] == -1) { //don't assign for self, valid blk == has a -1, instead of -2
+    		sets[set].count_mat[prevSC_ptr + m*assoc] = 0;
+    		//sets[set].nvc[prevSC_ptr]++; since dummy zero, no need to update nvc?
     	}
     }
+
+    // Update imminence information for all other valid blocks in the set
+    // that corresponds to current SC block's CM column.
+    // This is similar to the update of CM that happens in accessBlock().
+    for (m=0; m<assoc; m++){
+    	if (sets[set].blks[m]->isValid()){ //if valid block
+    		sets[set].count_mat[m + prevSC_ptr*assoc] = sets[set].nvc[prevSC_ptr];
+    		sets[set].nvc[prevSC_ptr]++;
+    	}
+    }
+
     // no need to change SC_ptr ?
 
     // deal with what we are bringing in
@@ -378,8 +418,9 @@ OPT::invalidate(BlkType *blk)
     blk->srcMasterId = Request::invldMasterId;
 
     // should be evicted before valid blocks
-    //unsigned set = blk->set;
-    //sets[set].moveToTail(blk);
+    Addr addr = regenerateBlkAddr (blk->tag, blk->set);
+    unsigned set = extractSet(addr);
+    sets[set].moveSCToHead();
 }
 
 void

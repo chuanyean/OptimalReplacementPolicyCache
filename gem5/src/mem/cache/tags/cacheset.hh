@@ -53,6 +53,8 @@ class CacheSet
     /** The MC associativity of this set */
     int mc_assoc;
 
+    int leastImmBlk_SCptr;
+
     /** Cache blocks in this set, maintained in LRU order 0 = MRU. */
     CacheBlk **blks;
 
@@ -105,19 +107,26 @@ class CacheSet
 	 */
 	void moveSCToTail(int blkSCPtr);
 
-    /**
+	/**
+	 * Move the given SC block to the tail of the list.
+	 * @param blk The block to move
+	 */
+	void moveSCToHead();
+
+	/*
+	 * Uses the global var 'leastImmblkSC_ptr' to determine
+	 * the SC # (SC ptr) to be replaced according to FIFO.
+	 */
+	int getSCFIFOHead();
+
+	/**
      * Uses the Count Matrix to find the least imminent block
      * which is the largest count value for a particular
      * SC block.
      * Returns index to the least imminent block.
      */
-    int findLeastImminentBlock (Addr addr, int SCBlkIndex);
+    int findLeastImminentBlock ();
 
-    /**
-     * Iterate through all the blocks in the set to find
-     * the index of the input argument (block)
-     */
-    int getBlockIndex (CacheBlk *blk);
 
 };
 

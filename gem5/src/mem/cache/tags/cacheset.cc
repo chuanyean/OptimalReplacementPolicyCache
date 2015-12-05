@@ -30,7 +30,7 @@
 
 
 #include "mem/cache/tags/cacheset.hh"
-
+using namespace std;
 
 CacheBlk*
 CacheSet::findBlk(Addr tag) const
@@ -92,62 +92,63 @@ CacheSet::moveToTail(CacheBlk *blk)
 }
 
 int
-CacheSet::findLeastImminentBlock (Addr addr, int SCBlkIndex)
+CacheSet::findLeastImminentBlock ()
 {
-	int i=0;
-	int maxPos = 0;
-	int scptr = SC_ptr[SCBlkIndex];
-	int maxCount = count_mat[0 + scptr*assoc]; //count_mat[0][scptr];
+	/*
+	 * Search in a CM column to get the highest count value for current head SC#,
+	 * since that is the SC block that will be moved to the least imminent
+	 * block in MC.
+	 *
+	 * Iterate over all the rows for this SC
+	 */
+	int scptr = leastImmBlk_SCptr;
+	int maxCount = 0, maxPos = 0;
 
-	// Search in CM to get the highest count value
-	// That will be the least imminent block
-	//DPRINTF (CacheRepl, "MZ - Searching for least imm blk, addr: %x, SCPtr(CM col): %d\n", addr, scptr);
-	for (i =0; i<assoc; i++){
-		//DPRINTF (CacheRepl, "MZ - countMat[%d][%d] = %d\n", i, scptr);
-		if (maxCount < count_mat[i + scptr*assoc]/*[i][scptr]*/){
-			maxCount = count_mat[i + scptr*assoc]/*[i][scptr]*/;
+	//cout << "Printing count matrix for current SC\n";
+	for (int i=0; i<assoc; i++){
+		//cout << "block" << i << ":" << count_mat[i + scptr*assoc] << ", ";
+		if (maxCount < count_mat[i + scptr*assoc]){
+
+			maxCount = count_mat[i + scptr*assoc];
 			maxPos = i;
 		}
 	}
-
-	//DPRINTF (CacheRepl, "MZ - Found least imm blk at pos %d, with count val %d\n", maxPos, maxCount);
+	//cout << "\nFound least imminent block at blk: " << maxPos << ", with count of " << maxCount << "\n";
 	return maxPos;
 }
 
+
 int
-CacheSet::getBlockIndex (CacheBlk *blk)
+CacheSet::getSCFIFOHead ()
 {
-	for (unsigned i=0; i<assoc; i++){
-		if (blks[i] == blk){
-			return i;
+	int scBlkIndex = 0;
+
+	for (int i=0; i<assoc; i++) {
+		if (leastImmBlk_SCptr == SC_ptr[i]){
+			scBlkIndex = i;
+
+			//cout << "MZ - SC fifo head to be replaced: blk[" << scBlkIndex << "]\n";
+			return scBlkIndex;
 		}
 	}
-	// SHould never reach here
-	fatal ("Error finding block in cache.");
+	fatal ("MZ - getSCFIFOHead - error, no block found.");
+	return scBlkIndex;
+
 }
+
 
 void
 CacheSet::moveSCToTail(int blkSCPtr)
 {
-    // nothing to do if blk is already tail
-    if (SC_queue[sc_assoc-1] == blkSCPtr)
-        return;
-
-    // write 'next' block into SC_queue[i], move everything to right
-    // (right= tail, left = head)
-    // until we overwrite the block we moved to tail.
-
-    // start by setting up to write 'blk' into tail
-    int i = sc_assoc - 1;
-    int next = SC_queue[0];
-
-    do {
-        assert(i >= 0);
-        // swap SC_queue[i] and next
-        int tmp = SC_queue[i];
-        SC_queue[i] = next;
-        next = tmp;
-        --i;
-    } while (i>=0);
+	leastImmBlk_SCptr = (leastImmBlk_SCptr + 1) % sc_assoc;
+	//cout << "After moveToTail, leastImmBlk_SCptr: " << leastImmBlk_SCptr << "\n";
+	return;
 }
 
+void
+CacheSet::moveSCToHead()
+{
+	leastImmBlk_SCptr = (leastImmBlk_SCptr - 1) < 0 ? (sc_assoc - 1) : (leastImmBlk_SCptr - 1);
+	//cout << "After moveToHead, leastImmBlk_SCptr: " << leastImmBlk_SCptr << "\n";
+	return;
+}
