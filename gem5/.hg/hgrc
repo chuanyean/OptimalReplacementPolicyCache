@@ -1,2 +1,13 @@
 [paths]
 default = https://musleh123@bitbucket.org/musleh123/ece565
+
+# The following lines were automatically added by gem5/SConstruct
+# to provide the gem5 style-checking hooks
+[extensions]
+style = /home/min/a/kadiyals/FinalProject/OptimalReplacementPolicyCache/gem5/util/style.py
+
+[hooks]
+pretxncommit.style = python:style.check_style
+pre-qrefresh.style = python:style.check_style
+# End of SConstruct additions
+

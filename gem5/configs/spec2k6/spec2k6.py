@@ -54,22 +54,25 @@ output_dir= '/home/min/a/username/outputs/spec2k6/'
 perlbench = LiveProcess()
 perlbench_dir = '400.perlbench/'
 perlbench.executable =  bench_dir+perlbench_dir+'/exe/perlbench'
-perlbench.cmd = [perlbench.executable] + ['-I./lib', 'attrs.pl']
-perlbench.output = 'attrs.out'
+perlbench_input = bench_dir+perlbench_dir+'data/ref/input/checkspam.pl'
+lib = bench_dir+perlbench_dir+'data/all/input/lib'
+perlbench.cmd = [perlbench.executable] + ['-I'+lib, perlbench_input]
+perlbench.cmd = perlbench.cmd + ['2500','5','25','11','150','1','1','1','1']
+perlbench.output = 'checkspam.out'
 
 #401.bzip2
 bzip2 = LiveProcess()
 bzip2_dir = '401.bzip2/'
 bzip2.executable =  bench_dir+bzip2_dir+'/exe/bzip2'
 data=bench_dir+bzip2_dir+'data/ref/input/input.source'
-bzip2.cmd = [bzip2.executable] + [data, '1']
+bzip2.cmd = [bzip2.executable] + [data, '280']
 bzip2.output = 'input.source.out'
 
 #403.gcc
 gcc = LiveProcess()
 gcc_dir = '403.gcc/'
 gcc.executable =  bench_dir+gcc_dir+'/exe/gcc'
-data=bench_dir+'/data/ref/input/166.i'
+data=bench_dir+gcc_dir+'/data/ref/input/166.i'
 output=output_dir+'/gcc/166.s'
 gcc.cmd = [gcc.executable] + [data]+['-o',output] + ['-quiet'] + ['-funroll-loops'] + ['-fforce-mem'] + ['-fcse-follow-jumps'] + ['-fcse-skip-blocks'] + ['-fexpensive-optimizations'] + ['-fstrength-reduce'] + ['-fpeephole']  + ['-fschedule-insns'] + ['-finline-functions'] + ['-fschedule-insns2']
 
@@ -185,10 +188,10 @@ calculix.output = 'beampic.log'
 
 #456.hmmer
 hmmer=LiveProcess()
-hmmr_dir = '456.hmmr/'
-hmmer.executable = bench_dir+hmmr_dir+'/exe/hmmer'
-data=bench_dir+hmmr_dir+'/data/ref/input/nph3.hmm'
-hmmer.cmd = [hmmer.executable]+['--fixed', '0', '--mean', '325', '--num', '5000', '--sd', '200', '--seed', '0', data]
+hmmr_dir = '456.hmmer/'
+hmmer.executable = bench_dir+hmmr_dir+'/exe/hmmr'
+data=bench_dir+hmmr_dir+'/data/ref/input/retro.hmm'
+hmmer.cmd = [hmmer.executable]+['--fixed', '0', '--mean', '500', '--num', '500000', '--sd', '350', '--seed', '0', data]
 hmmer.output = 'bombesin.out'
 
 #458.sjeng
@@ -210,7 +213,7 @@ GemsFDTD.output = 'ref.log'
 libquantum=LiveProcess()
 libquantum_dir ='462.libquantum/'
 libquantum.executable = bench_dir+libquantum_dir+'/exe/libquantum'
-libquantum.cmd = [libquantum.executable],'33','5'
+libquantum.cmd = [libquantum.executable],'1397','8'
 libquantum.output = 'ref.out'
 
 #464.h264ref
