@@ -55,6 +55,9 @@ class CacheSet
 
     int leastImmBlk_SCptr;
 
+    /** Block indexes array to maintain the least recently used blocks **/
+    int *LRU_Order;
+
     /** Cache blocks in this set, maintained in LRU order 0 = MRU. */
     CacheBlk **blks;
 
@@ -100,12 +103,15 @@ class CacheSet
      */
     void moveToTail(CacheBlk *blk);
 
+    /** Update LRU_Order array **/
+    void moveBlkToTail(int blkIndex);
+    void moveBlkToHead(int blkIndex);
 
 	/**
 	 * Move the given SC block to the tail of the list.
 	 * @param blk The block to move
 	 */
-	void moveSCToTail(int blkSCPtr);
+	void moveSCToTail();
 
 	/**
 	 * Move the given SC block to the tail of the list.

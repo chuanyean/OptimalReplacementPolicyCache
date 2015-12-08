@@ -102,18 +102,26 @@ CacheSet::findLeastImminentBlock ()
 	 * Iterate over all the rows for this SC
 	 */
 	int scptr = leastImmBlk_SCptr;
-	int maxCount = 0, maxPos = 0;
+	int maxCount = -2, maxPos = 0;
 
-	//cout << "Printing count matrix for current SC\n";
-	for (int i=0; i<assoc; i++){
-		//cout << "block" << i << ":" << count_mat[i + scptr*assoc] << ", ";
-		if (maxCount < count_mat[i + scptr*assoc]){
-
+	/* If one or more blocks found with empty flag set (i.e. -1 count value,
+	 * then pick the block based on the baseline replacement policy, in our
+	 * case: LRU.
+	 * The least recently used block should be at the beginning of the set.
+	 */
+	for (int m=0; m<assoc; m++){
+		int i = LRU_Order[m]; // i = blkIndex of LRU item
+		if (count_mat[i + scptr*assoc] == -1) {
+			maxCount = count_mat[i + scptr*assoc];
+			maxPos = i;
+			break;
+		}
+		else if (maxCount < count_mat[i + scptr*assoc]){
 			maxCount = count_mat[i + scptr*assoc];
 			maxPos = i;
 		}
 	}
-	//cout << "\nFound least imminent block at blk: " << maxPos << ", with count of " << maxCount << "\n";
+	//cout << "Found least imminent block at blk[" << maxPos << "], with count of " << maxCount << "\n";
 	return maxPos;
 }
 
@@ -138,7 +146,7 @@ CacheSet::getSCFIFOHead ()
 
 
 void
-CacheSet::moveSCToTail(int blkSCPtr)
+CacheSet::moveSCToTail()
 {
 	leastImmBlk_SCptr = (leastImmBlk_SCptr + 1) % sc_assoc;
 	//cout << "After moveToTail, leastImmBlk_SCptr: " << leastImmBlk_SCptr << "\n";
@@ -151,4 +159,44 @@ CacheSet::moveSCToHead()
 	leastImmBlk_SCptr = (leastImmBlk_SCptr - 1) < 0 ? (sc_assoc - 1) : (leastImmBlk_SCptr - 1);
 	//cout << "After moveToHead, leastImmBlk_SCptr: " << leastImmBlk_SCptr << "\n";
 	return;
+}
+
+void
+CacheSet::moveBlkToTail(int blkIndex)
+{
+    // nothing to do if blk is already tail
+    if (LRU_Order[assoc-1] == blkIndex)
+        return;
+
+    int i = assoc - 1;
+    int next = blkIndex;
+
+    do {
+        assert(i >= 0);
+        // swap
+        int tmp = LRU_Order[i];
+        LRU_Order[i] = next;
+        next = tmp;
+        --i;
+    } while (next != blkIndex);
+}
+
+void
+CacheSet::moveBlkToHead(int blkIndex)
+{
+    // nothing to do if blk is already head
+    if (LRU_Order[0] == blkIndex)
+        return;
+
+    int i = 0;
+    int next = blkIndex;
+
+    do {
+        assert(i < assoc);
+        // swap
+        int tmp = LRU_Order[i];
+        LRU_Order[i] = next;
+        next = tmp;
+        ++i;
+    } while (next != blkIndex);
 }
